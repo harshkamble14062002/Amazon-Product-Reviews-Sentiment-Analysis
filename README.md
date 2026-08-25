@@ -4,6 +4,10 @@ This project predicts whether an Amazon product review is positive or negative. 
 
 **Live app:** [amazon-review-sentiment-studio.streamlit.app](https://amazon-review-sentiment-studio.streamlit.app/)
 
+## App preview
+
+![Amazon Review Sentiment Studio showing a positive prediction](assets/amazon-review-sentiment-demo.png)
+
 ## What it does
 
 The dataset contains 25,000 reviews and their star ratings. Reviews with ratings from 1 to 3 are treated as negative, while ratings 4 and 5 are treated as positive. The model reads the review text and predicts one of these two classes.
