@@ -39,4 +39,3 @@ if st.button("Analyse sentiment", type="primary", disabled=not review.strip()):
     probability = load_model().predict_proba([review])[0][1]
     label = "Positive" if probability >= 0.5 else "Negative"
     st.metric("Prediction", label, f"{probability:.0%} positive probability")
-    st.caption("This is a baseline classifier; use it as an analytical aid, not a decision-making system.")
