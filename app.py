@@ -1,9 +1,13 @@
 """A minimal public-facing Streamlit demo."""
 
 from pathlib import Path
+import sys
 
 import joblib
 import streamlit as st
+
+# Streamlit runs this file from the repository root; expose the src-layout package.
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from amazon_sentiment.data import load_reviews
 from amazon_sentiment.model import build_pipeline
