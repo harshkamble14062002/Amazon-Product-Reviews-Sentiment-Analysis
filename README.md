@@ -6,7 +6,7 @@ This project predicts whether an Amazon product review is positive or negative. 
 
 ## App preview
 
-![Amazon Review Sentiment Studio showing a positive prediction](assets/amazon-review-sentiment-demo.png)
+![Amazon Review Sentiment Studio showing a positive prediction](assets/Screenshot_20260825_174552.png)
 
 ## What it does
 
