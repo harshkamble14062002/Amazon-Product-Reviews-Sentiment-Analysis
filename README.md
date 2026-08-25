@@ -1,69 +1,69 @@
 # Amazon Review Sentiment Studio
 
-An end-to-end, reproducible NLP baseline that classifies Amazon product reviews as **negative** (ratings 1–3) or **positive** (ratings 4–5). It turns the original exploratory notebook into a small, reviewable machine-learning project with a training command, test suite, and interactive demo.
+This project predicts whether an Amazon product review is positive or negative. It started as a Jupyter Notebook experiment and was later organised into a small machine-learning project with a web app.
 
-## Live demo
+**Live app:** [amazon-review-sentiment-studio.streamlit.app](https://amazon-review-sentiment-studio.streamlit.app/)
 
-Try the deployed app: [Amazon Review Sentiment Studio](https://amazon-review-sentiment-studio.streamlit.app/)
+## What it does
 
-> **Portfolio framing:** this project demonstrates practical text preprocessing, feature engineering with TF-IDF, model evaluation, and lightweight deployment—not a production-quality sentiment service.
+The dataset contains 25,000 reviews and their star ratings. Reviews with ratings from 1 to 3 are treated as negative, while ratings 4 and 5 are treated as positive. The model reads the review text and predicts one of these two classes.
 
-## Why this project exists
+For example:
 
-Product reviews are high-volume and unstructured. This project shows how a transparent baseline can turn review text into an immediately useful signal, while keeping the implementation simple enough to inspect and improve.
+- “The product arrived quickly and works perfectly.” → Positive
+- “Poor quality and stopped working after two days.” → Negative
 
-## What is included
+## How the model works
+
+1. Read the review text and rating from `AmazonReview.csv`.
+2. Remove missing or invalid records and clean extra whitespace.
+3. Convert ratings into positive and negative labels.
+4. Use TF-IDF to convert words and short phrases into numbers.
+5. Train a Logistic Regression model on those features.
+
+The model uses both single words and two-word phrases. This helps it recognise phrases such as “very good” or “not worth”.
+
+## Result
+
+Using an 80/20 train-test split with a fixed random seed, the model achieved **81.94% accuracy** on 5,000 test reviews.
+
+This is a traditional NLP baseline. It is useful for learning and for quick review analysis, but it can still struggle with sarcasm, mixed opinions, and reviews that lack enough context.
+
+## Tech used
+
+- Python
+- pandas
+- Scikit-learn
+- TF-IDF Vectorizer
+- Logistic Regression
+- Streamlit
+- GitHub Actions
+
+## Project files
 
 ```
-.
-├── AmazonReview.csv                         # Original 25,000-review dataset
-├── Amazon_Product_Reviews_Sentiment_Analysis.ipynb  # Original exploratory work
-├── src/amazon_sentiment/                    # Reusable loading, modelling, and training code
-├── tests/                                   # Data-preparation tests
-├── app.py                                   # Streamlit demo
-└── .github/workflows/tests.yml              # CI on pushes and pull requests
+AmazonReview.csv                              # Dataset
+Amazon_Product_Reviews_Sentiment_Analysis.ipynb  # Original notebook work
+app.py                                        # Streamlit web app
+src/amazon_sentiment/                         # Training and model code
+tests/                                        # Basic tests
 ```
 
-## Approach
+The notebook is kept to show the original analysis. The Streamlit app uses the reusable code inside `src/amazon_sentiment`.
 
-1. Validate and clean the `Review` and `Sentiment` columns.
-2. Map 1–3 star ratings to negative and 4–5 to positive.
-3. Split data using a stratified 80/20 train/test split with a fixed seed.
-4. Convert text to TF-IDF features (unigrams and bigrams).
-5. Train a class-balanced Logistic Regression classifier and save its held-out metrics.
-
-TF-IDF + Logistic Regression is deliberate: it is fast, reproducible, and easier to reason about than a black-box model. The generated metrics are never hard-coded in this README; run training to report the actual result for your environment and data.
-
-## Quick start
-
-Requires Python 3.10+.
+## Run it locally
 
 ```bash
 git clone https://github.com/harshkamble14062002/Amazon-Product-Reviews-Sentiment-Analysis.git
 cd Amazon-Product-Reviews-Sentiment-Analysis
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-PYTHONPATH=src python -m amazon_sentiment.train
 PYTHONPATH=src streamlit run app.py
 ```
 
-Training writes a serialised model and `metrics.json` to `artifacts/`; that directory is intentionally excluded from version control. Open the Streamlit URL printed in your terminal and paste a review to test the classifier.
-
-## Responsible use and limitations
-
-- Ratings are treated as sentiment labels, which is a useful proxy but not a perfect measure of a writer's attitude.
-- The dataset may not represent all products, languages, dialects, or current Amazon reviews.
-- The model does not understand sarcasm, context outside the review, or nuanced mixed sentiment.
-- Do not use this baseline for high-impact or automated decisions about people.
-
-## Next improvements
-
-- Add data provenance and licence information before redistributing the dataset.
-- Compare against a linear SVM and a transformer baseline using the same split.
-- Add error analysis for short, mixed, and product-specific reviews.
-- Deploy the Streamlit app and add a screenshot/link here.
+On the first run, the app trains the model from the included CSV file. After that, it reuses the saved model.
 
 ## License
 
-Code is released under the [MIT License](LICENSE). Confirm that you have the right to publish and redistribute the included dataset before using it outside this repository.
+The code is available under the [MIT License](LICENSE). Check the source and redistribution rights of the dataset before using it in another project.
