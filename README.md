@@ -2,6 +2,10 @@
 
 An end-to-end, reproducible NLP baseline that classifies Amazon product reviews as **negative** (ratings 1–3) or **positive** (ratings 4–5). It turns the original exploratory notebook into a small, reviewable machine-learning project with a training command, test suite, and interactive demo.
 
+## Live demo
+
+Try the deployed app: [Amazon Review Sentiment Studio](https://amazon-review-sentiment-studio.streamlit.app/)
+
 > **Portfolio framing:** this project demonstrates practical text preprocessing, feature engineering with TF-IDF, model evaluation, and lightweight deployment—not a production-quality sentiment service.
 
 ## Why this project exists
