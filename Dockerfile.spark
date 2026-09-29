@@ -4,11 +4,11 @@ USER root
 
 WORKDIR /opt/app
 
-COPY requirements.txt .
+COPY requirements-spark.txt .
 
 RUN pip3 install \
     --no-cache-dir \
-    -r requirements.txt
+    -r requirements-spark.txt
 
 COPY src ./src
 

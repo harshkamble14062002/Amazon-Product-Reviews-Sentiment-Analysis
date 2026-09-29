@@ -10,9 +10,9 @@ DATABASE_URL = os.getenv(
 
 
 def get_connection():
-    return psycopg.connect(DATABASE_URL)
-
-
+    return psycopg.connect(
+        DATABASE_URL
+    )
 
 
 def save_review(
@@ -32,8 +32,16 @@ def save_review(
                 positive_probability,
                 created_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (review_id) DO NOTHING;
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            ON CONFLICT (review_id)
+            DO NOTHING;
             """,
             (
                 review["review_id"],
@@ -48,7 +56,47 @@ def save_review(
     connection.commit()
 
 
-def get_reviews(connection, limit: int = 20):
+def get_review_by_id(
+    connection,
+    review_id: str,
+):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                review_id,
+                product_id,
+                review_text,
+                sentiment,
+                positive_probability,
+                created_at
+            FROM reviews
+            WHERE review_id = %s;
+            """,
+            (review_id,),
+        )
+
+        row = cursor.fetchone()
+
+    if row is None:
+        return None
+
+    return {
+        "review_id": row[0],
+        "product_id": row[1],
+        "review_text": row[2],
+        "sentiment": row[3],
+        "positive_probability": float(
+            row[4]
+        ),
+        "created_at": row[5],
+    }
+
+
+def get_reviews(
+    connection,
+    limit: int = 50,
+):
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -74,9 +122,10 @@ def get_reviews(connection, limit: int = 20):
             "product_id": row[1],
             "review_text": row[2],
             "sentiment": row[3],
-            "positive_probability": row[4],
+            "positive_probability": float(
+                row[4]
+            ),
             "created_at": row[5],
         }
         for row in rows
     ]
-

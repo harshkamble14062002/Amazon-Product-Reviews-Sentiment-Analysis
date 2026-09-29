@@ -39,7 +39,6 @@ services:
       KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
 
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
-
       CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
 
     volumes:
@@ -119,9 +118,7 @@ services:
 
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-
       DATABASE_URL: "postgresql://review_app:review_dev_password@postgres:5432/reviews"
-
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
@@ -150,13 +147,10 @@ services:
 
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-
       DATABASE_URL: "postgresql://review_app:review_dev_password@postgres:5432/reviews"
       REDIS_HOST: redis
       REDIS_PORT: 6379
-
-      SPARK_CHECKPOINT_LOCATION: >
-        /opt/app/checkpoints/ml-persistence-v1
+      SPARK_CHECKPOINT_LOCATION: "/opt/app/checkpoints/ml-persistence-v1"
 
     depends_on:
       kafka:
@@ -173,20 +167,71 @@ services:
 
     command:
       - /opt/spark/bin/spark-submit
-
       - --master
       - local[*]
-
       - --conf
       - spark.jars.ivy=/tmp/spark-ivy
-
       - --packages
       - org.apache.spark:spark-sql-kafka-0-10_2.13:4.2.0
-
       - --files
       - /opt/app/artifacts/sentiment_pipeline.joblib
-
       - /opt/app/src/amazon_sentiment/pipeline/spark_inference.py
+
+    restart: unless-stopped
+
+
+  user-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    container_name: amazon-reviews-user-ui
+
+    environment:
+      API_URL: http://api:8000
+
+    ports:
+      - "8501:8501"
+
+    depends_on:
+      api:
+        condition: service_started
+
+    command:
+      - streamlit
+      - run
+      - /app/src/amazon_sentiment/frontend/user_app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+
+    restart: unless-stopped
+
+
+  admin-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    container_name: amazon-reviews-admin-dashboard
+
+    environment:
+      API_URL: http://api:8000
+
+    ports:
+      - "8502:8501"
+
+    depends_on:
+      api:
+        condition: service_started
+
+    command:
+      - streamlit
+      - run
+      - /app/src/amazon_sentiment/frontend/admin_dashboard.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
 
     restart: unless-stopped
 
