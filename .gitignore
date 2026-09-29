@@ -6,3 +6,5 @@ venv/
 .env
 artifacts/
 .streamlit/secrets.toml
+.spark-checkpoints/
+*.egg-info/

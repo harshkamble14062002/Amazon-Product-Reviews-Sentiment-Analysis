@@ -1,0 +1,372 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+
+jobs:
+  test-and-integration:
+    name: Test and Integration
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 40
+
+    steps:
+      # --------------------------------------------------
+      # Checkout
+      # --------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+
+      # --------------------------------------------------
+      # Python
+      # --------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+
+      # --------------------------------------------------
+      # Dependencies
+      # --------------------------------------------------
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+          pip install \
+            -r requirements.txt
+
+
+      # --------------------------------------------------
+      # Train ML model
+      #
+      # artifacts/ is generated and should not need to
+      # be committed to Git.
+      # --------------------------------------------------
+
+      - name: Train sentiment model
+        run: |
+          test -f AmazonReview.csv
+
+          PYTHONPATH=src \
+          python -m amazon_sentiment.train
+
+          test -f \
+            artifacts/sentiment_pipeline.joblib
+
+
+      # --------------------------------------------------
+      # Unit tests
+      #
+      # These tests do not require Docker services.
+      # --------------------------------------------------
+
+      - name: Run unit tests
+        run: |
+          PYTHONPATH=src \
+          pytest tests/test_data.py -v
+
+
+      # --------------------------------------------------
+      # Validate Docker Compose
+      # --------------------------------------------------
+
+      - name: Validate Docker Compose
+        run: |
+          docker compose config --quiet
+
+
+      # --------------------------------------------------
+      # Prepare Kafka persistent volume
+      #
+      # Kafka runs as a non-root user.
+      # Create the container first so we can determine
+      # the Compose-generated volume name.
+      # --------------------------------------------------
+
+      - name: Prepare Kafka volume
+        run: |
+          docker compose create kafka
+
+          KAFKA_VOLUME=$(
+            docker inspect \
+              amazon-reviews-kafka \
+              --format='{{range .Mounts}}{{if eq .Destination "/tmp/kraft-combined-logs"}}{{.Name}}{{end}}{{end}}'
+          )
+
+          echo "Kafka volume: $KAFKA_VOLUME"
+
+          test -n "$KAFKA_VOLUME"
+
+          docker run \
+            --rm \
+            --user root \
+            -v "$KAFKA_VOLUME:/tmp/kraft-combined-logs" \
+            apache/kafka:4.1.2 \
+            sh -c \
+            'chown -R 1000:1000 /tmp/kraft-combined-logs'
+
+
+      # --------------------------------------------------
+      # Build all containers
+      # --------------------------------------------------
+
+      - name: Build Docker images
+        run: |
+          docker compose build
+
+
+      # --------------------------------------------------
+      # Start complete stack
+      # --------------------------------------------------
+
+      - name: Start services
+        run: |
+          docker compose up -d
+
+
+      # --------------------------------------------------
+      # Wait for Kafka
+      # --------------------------------------------------
+
+      - name: Wait for Kafka
+        run: |
+          for attempt in {1..60}; do
+
+            STATUS=$(
+              docker inspect \
+                --format='{{.State.Health.Status}}' \
+                amazon-reviews-kafka \
+                2>/dev/null || true
+            )
+
+            echo \
+              "Kafka health: ${STATUS:-not-ready}"
+
+            if [ "$STATUS" = "healthy" ]; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "Kafka failed to become healthy."
+
+          docker compose logs \
+            kafka \
+            --tail=200
+
+          exit 1
+
+
+      # --------------------------------------------------
+      # Guarantee topic exists
+      #
+      # This is safe even if kafka-init already created it.
+      # --------------------------------------------------
+
+      - name: Create Kafka topic
+        run: |
+          docker exec \
+            amazon-reviews-kafka \
+            /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server localhost:9092 \
+            --create \
+            --if-not-exists \
+            --topic review-events \
+            --partitions 3 \
+            --replication-factor 1
+
+          docker exec \
+            amazon-reviews-kafka \
+            /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server localhost:9092 \
+            --describe \
+            --topic review-events
+
+
+      # --------------------------------------------------
+      # Wait for FastAPI
+      # --------------------------------------------------
+
+      - name: Wait for API
+        run: |
+          for attempt in {1..60}; do
+
+            if curl \
+              --fail \
+              --silent \
+              http://localhost:8000/health
+            then
+              echo
+              echo "FastAPI is ready."
+              exit 0
+            fi
+
+            echo \
+              "Waiting for FastAPI..."
+
+            sleep 2
+          done
+
+          echo \
+            "FastAPI did not become ready."
+
+          docker compose logs \
+            api \
+            --tail=200
+
+          exit 1
+
+
+      # --------------------------------------------------
+      # Wait for Spark
+      #
+      # First startup may download Kafka connector JARs.
+      # --------------------------------------------------
+
+      - name: Wait for Spark
+        run: |
+          for attempt in {1..90}; do
+
+            if docker compose logs spark 2>&1 \
+              | grep -q \
+              "Spark pipeline waiting for review events"
+            then
+              echo \
+                "Spark pipeline is ready."
+
+              exit 0
+            fi
+
+            echo \
+              "Waiting for Spark..."
+
+            sleep 2
+          done
+
+          echo \
+            "Spark failed to become ready."
+
+          docker compose logs \
+            spark \
+            --tail=300
+
+          exit 1
+
+
+      # --------------------------------------------------
+      # Show running services
+      # --------------------------------------------------
+
+      - name: Show service status
+        run: |
+          docker compose ps -a
+
+
+      # --------------------------------------------------
+      # Integration tests
+      #
+      # Run only after Kafka, API, Spark, PostgreSQL and
+      # Redis are available.
+      # --------------------------------------------------
+
+      - name: Run integration tests
+        run: |
+          PYTHONPATH=src \
+          pytest tests/integration -v
+
+
+      # --------------------------------------------------
+      # Full E2E test
+      #
+      # FastAPI
+      #   -> Kafka
+      #   -> Spark
+      #   -> ML
+      #   -> PostgreSQL
+      #   -> Redis
+      # --------------------------------------------------
+
+      - name: Run end-to-end smoke test
+        run: |
+          bash scripts/smoke_test.sh
+
+
+      # --------------------------------------------------
+      # Logs when anything fails
+      # --------------------------------------------------
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "===== CONTAINERS ====="
+
+          docker compose ps -a
+
+          echo
+          echo "===== API ====="
+
+          docker compose logs \
+            api \
+            --tail=200 || true
+
+          echo
+          echo "===== KAFKA ====="
+
+          docker compose logs \
+            kafka \
+            --tail=200 || true
+
+          echo
+          echo "===== SPARK ====="
+
+          docker compose logs \
+            spark \
+            --tail=300 || true
+
+          echo
+          echo "===== POSTGRES ====="
+
+          docker compose logs \
+            postgres \
+            --tail=200 || true
+
+          echo
+          echo "===== REDIS ====="
+
+          docker compose logs \
+            redis \
+            --tail=200 || true
+
+
+      # --------------------------------------------------
+      # Cleanup
+      #
+      # -v is fine here because GitHub runner is temporary.
+      # --------------------------------------------------
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down \
+            -v \
+            --remove-orphans
