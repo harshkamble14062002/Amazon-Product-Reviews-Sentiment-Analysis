@@ -16,6 +16,16 @@ The main goal is simple:
 
 ---
 
+## Live AWS Deployment
+
+The current Docker Compose stack is deployed on an AWS EC2 instance.
+
+- **User App:** http://3.109.108.8:8501
+- **Admin Dashboard:** http://3.109.108.8:8502
+
+
+---
+
 ## Model
 
 The dataset contains around 25,000 Amazon product reviews.
