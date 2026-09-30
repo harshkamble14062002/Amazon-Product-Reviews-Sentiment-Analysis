@@ -26,6 +26,13 @@ The current Docker Compose stack is deployed on an AWS EC2 instance.
 
 ---
 
+## Screenshots
+
+![Application Screenshot](assets/Screenshot_20260825_174552-1.png)
+
+
+---
+
 ## Model
 
 The dataset contains around 25,000 Amazon product reviews.
