@@ -29,7 +29,7 @@ The current Docker Compose stack is deployed on an AWS EC2 instance.
 ## Screenshots
 
 ![Application Screenshot](assets/Screenshot_20260825_174552-1.png)
-![Application Screenshot](assets/Screenshot_20260825_174552-1.png)
+![Application Screenshot](Screenshot_20260930_235017.png)
 
 ---
 
