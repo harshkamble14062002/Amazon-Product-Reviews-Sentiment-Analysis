@@ -1,0 +1,29 @@
+FROM spark:4.2.0-python3
+
+USER root
+
+WORKDIR /opt/app
+
+COPY requirements-spark.txt .
+
+RUN pip3 install \
+    --no-cache-dir \
+    -r requirements-spark.txt
+
+COPY src ./src
+
+COPY artifacts/sentiment_pipeline.joblib \
+    ./artifacts/sentiment_pipeline.joblib
+
+RUN mkdir -p \
+        /opt/app/checkpoints \
+        /tmp/spark-ivy \
+    && chown -R spark:spark \
+        /opt/app \
+        /tmp/spark-ivy
+
+ENV PYTHONPATH=/opt/app/src
+
+USER spark
+
+WORKDIR /opt/app
