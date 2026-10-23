@@ -1,4 +1,16 @@
 services:
+  kafka-permissions:
+    image: apache/kafka:4.1.2
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /tmp/kraft-combined-logs
+        chown -R 1000:1000 /tmp/kraft-combined-logs
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    restart: "no"
+
   kafka:
     image: apache/kafka:4.1.2
     hostname: kafka

@@ -16,6 +16,88 @@ The main goal is simple:
 
 ---
 
+## AWS Deployment
+
+The project is currently deployed on **AWS EC2** using a single Ubuntu server.
+
+### Deployment Setup
+
+- **Cloud Provider:** AWS
+- **Service:** Amazon EC2
+- **Operating System:** Ubuntu Server 26.04 LTS
+- **Deployment Model:** IaaS
+- **Container Runtime:** Docker
+- **Orchestration:** Docker Compose
+- **Storage:** 30 GB EBS gp3
+- **Architecture:** x86_64
+
+The complete application stack runs on the same EC2 instance:
+
+```text
+AWS EC2
+   |
+   +-- Docker Compose
+         |
+         +-- Streamlit User App
+         +-- Streamlit Admin Dashboard
+         +-- FastAPI
+         +-- Apache Kafka
+         +-- Apache Spark
+         +-- PostgreSQL
+         +-- Redis
+```
+
+### Live Applications
+
+- **User App:** http://3.109.108.8:8501
+- **Admin Dashboard:** http://3.109.108.8:8502
+
+### Network
+
+The current deployment exposes the Streamlit applications through the EC2 public IP.
+
+Application ports:
+
+```text
+8501 - User App
+8502 - Admin Dashboard
+8000 - FastAPI
+```
+
+Kafka, PostgreSQL, and Redis are used internally by the Docker network and are not intended to be publicly exposed.
+
+### Deployment Flow
+
+```text
+GitHub Repository
+       |
+       v
+AWS EC2
+       |
+       v
+Docker Compose
+       |
+       +--> FastAPI
+       +--> Kafka
+       +--> Spark
+       +--> PostgreSQL
+       +--> Redis
+       +--> User UI
+       +--> Admin Dashboard
+```
+
+The next deployment improvement is to add a reverse proxy and HTTPS so the applications can be accessed through standard web ports instead of direct application ports.
+
+
+---
+
+## Screenshots
+
+![Application Screenshot](assets/Screenshot_20260825_174552-1.png)
+![Application Screenshot](assets/Screenshot_20260930_235017.png)
+
+---
+
 ## Model
 
 The dataset contains around 25,000 Amazon product reviews.
